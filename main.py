@@ -18,25 +18,17 @@ l2w = np.array([[1, 0, 0],
                 [0, 1, 0],
                 [0, 0, 1]], dtype=float)
 
-# v2w = np.array([[1, 0, 0, 0],
-#                 [0, 1, 0, 0],
-#                 [0, 0, 1, 0],
-#                 [0, 0, 0, 1]], dtype=float)
-
-v2w = np.array([[2, 0, 0, -1],
-                [0, 2, 0, -1],
-                [0, 0, 2, -1],
-                [0, 0, 0, 1]], dtype=float)
+lb = vec3(-1,-1,-1)
+rt = vec3(1,1,1)
 
 
 camera = PerspectiveCamera(35, 800, 800, c2w)
-envmap = Envmap('assets/Tokyo_BigSight_3k.hdr', l2w)
-volume = Volume(v2w, 256, hetero=True)
+envmap = Envmap('assets/limpopo_golf_course_3k.hdr', l2w)
+volume = Volume(lb, rt, 256, hetero=True, lerp=False)
 integrator = Integrator(camera, envmap, volume, 32, 64, 32)
 
 integrator.render()
 ti.profiler.print_kernel_profiler_info('trace')
-# integrator.render_image()
 
 ti.tools.imshow(integrator.output)
 

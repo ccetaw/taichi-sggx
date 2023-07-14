@@ -24,7 +24,6 @@ class PerspectiveCamera:
         self.output_size = vec2(width, height)
         self.inv_output_size = 1 / self.output_size
         self.c2w = mat4(c2w)
-        # self.c2w.from_numpy(c2w)
         self.focal = 0.5 * self.output_size.x / np.tan(np.deg2rad(self.fov))
         self.intrinsics = mat3(-self.focal, 0, self.output_size.x / 2,
                                0, -self.focal, self.output_size.y / 2,

@@ -43,7 +43,7 @@ class Integrator:
                     for s1 in range(self.N_samples_1 - 1): # Outer integral
                         right = left + step * ray.d
                         voxel = self.vol.at(right)
-                        alpha = 1 - exp(-step*voxel.sigma)
+                        alpha = 1 - exp(-step*voxel.density)
                         L_s = vec3(0.0, 0.0, 0.0) 
                         for s2 in range(self.N_samples_2): # Inner integral
                             transmittance_s = vec3(1.0, 1.0, 1.0)

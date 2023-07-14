@@ -40,5 +40,8 @@ $$
 
 The radiance at point $\mathbf{x}$ from direction $\omega$ is composed of 2 terms. THe first term is the radiance from the background, with $T\_r(\mathbf{x},\mathbf{y})$ being the transmittance between points $\mathbf{x}$ and $\mathbf{x}$, $L\_e(\omega)$ being the radiance from the environment. As we mentioned, the environment radiance only depends on direction. And $\mathbf{x}\_\infty(\omega)$ is the point at infinity in direction $\omega$ from point $\mathbf{x}$.
 
-The second term is the accumulated scattering radiance. $sigma\_t$ is the extincition coefficient, $\alpha$ is the albedo. In SGGX rendering, these two terms may depend on directions. The inner integration is the radiance from all directions scattered to direction $\omega$. $f\_p$ is the phase function.
+The second term is the accumulated scattering radiance. $\sigma\_t$ is the extincition coefficient, $\alpha$ is the albedo. In SGGX rendering, these two terms may depend on directions. The inner integration is the radiance from all directions scattered to direction $\omega$. $f\_p$ is the phase function.
 
+## Log
+- Trilinear interpolation of voxels is a big rendering bottleneck, increasing the rendering time by a factor of 10
+- Sampling on secondary rays are also expensive

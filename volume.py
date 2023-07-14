@@ -6,7 +6,7 @@ from utils import trilerp
 
 @ti.dataclass
 class Voxel:
-    sigma: vec3
+    density: vec3
     albedo: vec3
 
 @ti.dataclass
@@ -18,77 +18,74 @@ class AABB:
 @ti.data_oriented
 class Volume:
 
-    def __init__(self, v2w: np.ndarray, res: int, hetero: bool = False) -> None:
-        self.aabb = AABB(lt=vec3(0,0,0), rt=vec3(1,1,1)) # In local space, aabb assumed to be [0,0,0] and [1,1,1]
-        self.v2w = mat4(v2w)
-        self.w2v = mat4(np.linalg.inv(v2w))
+    def __init__(self, lb: vec3, rt: vec3, res: int, hetero: bool = False, lerp: bool =False) -> None:
+        self.aabb = AABB(lb=lb, rt=rt) # In local space, aabb assumed to be [0,0,0] and [1,1,1]
         self.res = res
-        
+        self.lerp=lerp
         self.data = Voxel.field(shape=(res, res, res))
         if hetero:
             self.gen_gradient_volume()
         else:
-            self.data.sigma.fill(1)
+            self.data.density.fill(0.7)
             self.data.albedo.fill(0.5)
 
     @ti.func 
     def at(self, x):
-        tmp = vec4(x[0], x[1], x[2], 1)
-        tmp = self.w2v @ tmp
-        x = vec3(tmp.x, tmp.y, tmp.z)
-        x = clamp(x, xmin=vec3([0,0,0]), xmax=vec3([0.999,0.999,0.999]))
+        """
+        voxel data at world space position x
+        """
+        x = clamp(x, xmin=self.aabb.lb, xmax=self.aabb.rt-0.001)
+        x -= self.aabb.lb
+        x /= self.aabb.rt - self.aabb.lb
         x = x * (self.res - 1)
         x0 = ti.cast(x, int)
-        x1 = x0 + 1
-        sigma = trilerp(x, x0, x1, 
-                       self.data.sigma[x0[0], x0[1], x0[2]],
-                       self.data.sigma[x1[0], x0[1], x0[2]],
-                       self.data.sigma[x0[0], x1[1], x0[2]],
-                       self.data.sigma[x1[0], x1[1], x0[2]],
-                       self.data.sigma[x0[0], x0[1], x1[2]],
-                       self.data.sigma[x1[0], x0[1], x1[2]],
-                       self.data.sigma[x0[0], x1[1], x1[2]],
-                       self.data.sigma[x1[0], x1[1], x1[2]])
-        # print(sigma)
-        
-        albedo = trilerp(x, x0, x1, 
-                       self.data.albedo[x0[0], x0[1], x0[2]],
-                       self.data.albedo[x1[0], x0[1], x0[2]],
-                       self.data.albedo[x0[0], x1[1], x0[2]],
-                       self.data.albedo[x1[0], x1[1], x0[2]],
-                       self.data.albedo[x0[0], x0[1], x1[2]],
-                       self.data.albedo[x1[0], x0[1], x1[2]],
-                       self.data.albedo[x0[0], x1[1], x1[2]],
-                       self.data.albedo[x1[0], x1[1], x1[2]])
-        
-        return Voxel(sigma=sigma, albedo=albedo)
+        voxel = Voxel()
+        if self.lerp:
+            x1 = x0 + 1
+            density = trilerp(x, x0, x1, 
+                        self.data.density[x0[0], x0[1], x0[2]],
+                        self.data.density[x1[0], x0[1], x0[2]],
+                        self.data.density[x0[0], x1[1], x0[2]],
+                        self.data.density[x1[0], x1[1], x0[2]],
+                        self.data.density[x0[0], x0[1], x1[2]],
+                        self.data.density[x1[0], x0[1], x1[2]],
+                        self.data.density[x0[0], x1[1], x1[2]],
+                        self.data.density[x1[0], x1[1], x1[2]])
+            
+            albedo = trilerp(x, x0, x1, 
+                        self.data.albedo[x0[0], x0[1], x0[2]],
+                        self.data.albedo[x1[0], x0[1], x0[2]],
+                        self.data.albedo[x0[0], x1[1], x0[2]],
+                        self.data.albedo[x1[0], x1[1], x0[2]],
+                        self.data.albedo[x0[0], x0[1], x1[2]],
+                        self.data.albedo[x1[0], x0[1], x1[2]],
+                        self.data.albedo[x0[0], x1[1], x1[2]],
+                        self.data.albedo[x1[0], x1[1], x1[2]])
+            voxel = Voxel(density=density, albedo=albedo)
+        else:
+            voxel = self.data[x0]
+
+        return voxel
 
     @ti.func
     def get_aabb(self):
+        """
+        Return AABB of the volume in world space
+        """
         lb = self.aabb.lb
         rt = self.aabb.rt
-        tmp1 = vec4(lb.x, lb.y, lb.z, 1)
-        tmp2 = vec4(rt.x, rt.y, rt.z, 1)
-        lb_w = self.v2w @ tmp1
-        rt_w = self.v2w @ tmp2
-        return AABB(lb=vec3(lb_w.x, lb_w.y, lb_w.z), rt=vec3(rt_w.x, rt_w.y, rt_w.z))
+        return AABB(lb=lb, rt=rt)
 
     @ti.func 
     def Tr(self, x, y):
         """
         Assuming constant density value between x and y
-        Take the value at y
+        Take the value at x
         """
-        tmp_x = vec4(x[0], x[1], x[2], 1)
-        tmp_y = vec4(y[0], y[1], y[2], 1)
-        tmp_x = self.w2v @ tmp_x
-        tmp_y = self.w2v @ tmp_y
-        x = vec3(tmp_x[0], tmp_x[1], tmp_x[2])
-        y = vec3(tmp_y[0], tmp_y[1], tmp_y[2])
-        return exp(-distance(x,y)*self.at(x).sigma)
+        return exp(-distance(x,y)*self.at(y).density)
 
     @ti.kernel
     def gen_gradient_volume(self):
         for i,j,k in self.data:
             self.data.albedo[i, j, k] = vec3(0.2, 0.1, 0.2) + k/self.res * vec3(0.8, 0.1, 0.8)
-            self.data.sigma[i, j, k] =  k/self.res * vec3(1)
+            self.data.density[i, j, k] =  k/self.res * vec3(1)
