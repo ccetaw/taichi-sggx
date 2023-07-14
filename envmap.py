@@ -26,8 +26,8 @@ class Envmap:
         if (phi<0):
             phi += 2 * pi
 
-        x = 1-phi * 0.5 / pi # in [0, 1]
-        y = theta / pi  # in [0, 1]
+        x = phi * 0.5 / pi # in [0, 1]
+        y = 1- theta / pi  # in [0, 1], invert y axis
         x = clamp(x, 0, 0.999) * (self.img.shape[0]-1) # avoid out of range
         y = clamp(y, 0, 0.999) * (self.img.shape[1]-1)
 

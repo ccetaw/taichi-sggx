@@ -22,8 +22,3 @@ def trilerp(x, x0, x1, q000, q100, q010, q110, q001, q101, q011, q111):
     qxy1 = lerp(x[1], x0[1], x1[1], qx01, qx11)
 
     return lerp(x[2], x0[2], x1[2], qxy0, qxy1)
-
-@ti.kernel
-def image_camera2taichi(image_camera: ti.template(), image_taichi: ti.template()):
-    for i, j in image_taichi:
-        image_taichi[i, j] = image_camera[i, image_camera.shape[1]-1-j]

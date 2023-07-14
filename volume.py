@@ -18,13 +18,18 @@ class AABB:
 @ti.data_oriented
 class Volume:
 
-    def __init__(self, v2w: np.ndarray, res: int) -> None:
+    def __init__(self, v2w: np.ndarray, res: int, random: bool = False) -> None:
         self.aabb = AABB(lt=vec3(0,0,0), rt=vec3(1,1,1)) # In local space, aabb assumed to be [0,0,0] and [1,1,1]
         self.v2w = mat4(v2w)
         self.w2v = mat4(np.linalg.inv(v2w))
         self.res = res
         
         self.data = Voxel.field(shape=(res, res, res))
+        if random:
+            self.gen_random_volume()
+        else:
+            self.data.sigma.fill(1)
+            self.data.albedo.fill(0.02)
 
     @ti.func 
     def at(self, x):
@@ -44,6 +49,7 @@ class Volume:
                        self.data.sigma[x1[0], x0[1], x1[2]],
                        self.data.sigma[x0[0], x1[1], x1[2]],
                        self.data.sigma[x1[0], x1[1], x1[2]])
+        # print(sigma)
         
         albedo = trilerp(x, x0, x1, 
                        self.data.albedo[x0[0], x0[1], x0[2]],
@@ -73,5 +79,16 @@ class Volume:
         Assuming constant density value between x and y
         Take the value at y
         """
-        return exp(-distance(x,y)*self.at(y).sigma)
+        tmp_x = vec4(x[0], x[1], x[2], 1)
+        tmp_y = vec4(y[0], y[1], y[2], 1)
+        tmp_x = self.w2v @ tmp_x
+        tmp_y = self.w2v @ tmp_y
+        x = vec3(tmp_x[0], tmp_x[1], tmp_x[2])
+        y = vec3(tmp_y[0], tmp_y[1], tmp_y[2])
+        return exp(-distance(x,y)*self.at(x).sigma)
 
+    @ti.kernel
+    def gen_random_volume(self):
+        for i,j,k in self.data:
+            self.data.albedo[i, j, k] = k/self.res * vec3(ti.random(), ti.random(), ti.random())
+            self.data.sigma[i, j, k] = vec3(0.02, 0.01, 0.08)

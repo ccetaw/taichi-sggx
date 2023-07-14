@@ -33,14 +33,14 @@ class PerspectiveCamera:
     @ti.func
     def gen_ray(self, i: int, j: int) -> Ray:
         o = self.c2w @ vec4(0,0,0,1)
-        d = self.c2w @ vec4(i + (ti.random() - 0.5) - self.output_size.x/2, j + (ti.random() - 0.5) - self.output_size.y/2, self.focal, 0)
+        d = self.c2w @ vec4(i + 2*(ti.random() - 0.5) - self.output_size.x/2, j + 2*(ti.random() - 0.5) - self.output_size.y/2, -self.focal, 0)
         
         origin = vec3(o[0], o[1], o[2])
         direction = normalize(vec3(d[0], d[1], d[2]))
 
         ray = Ray(o = origin, d = direction)
 
-        return ray
+        return ray # Ray in world space
         
         
 
