@@ -18,14 +18,14 @@ class AABB:
 @ti.data_oriented
 class Volume:
 
-    def __init__(self, v2w: np.ndarray, res: int, random: bool = False) -> None:
+    def __init__(self, v2w: np.ndarray, res: int, hetero: bool = False) -> None:
         self.aabb = AABB(lt=vec3(0,0,0), rt=vec3(1,1,1)) # In local space, aabb assumed to be [0,0,0] and [1,1,1]
         self.v2w = mat4(v2w)
         self.w2v = mat4(np.linalg.inv(v2w))
         self.res = res
         
         self.data = Voxel.field(shape=(res, res, res))
-        if random:
+        if hetero:
             self.gen_gradient_volume()
         else:
             self.data.sigma.fill(1)
@@ -90,5 +90,5 @@ class Volume:
     @ti.kernel
     def gen_gradient_volume(self):
         for i,j,k in self.data:
-            self.data.albedo[i, j, k] = k/self.res * vec3(0.7, 0.7, 0.7)
-            self.data.sigma[i, j, k] = vec3(0.7, 0.7, 0.1) + k/self.res * vec3(0.4, 0.1, 0.2)
+            self.data.albedo[i, j, k] = vec3(0.2, 0.1, 0.2) + k/self.res * vec3(0.8, 0.1, 0.8)
+            self.data.sigma[i, j, k] =  k/self.res * vec3(1)

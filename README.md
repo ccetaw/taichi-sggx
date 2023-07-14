@@ -18,8 +18,9 @@ We follow the OpenGL camera convention that the camera space is right-handed and
 We use an hdr image as environment map. The environment is considered placed so far away that rays with the same direction result in the same color. For more details, please refer to [PBR book](https://www.pbr-book.org/3ed-2018/Light\_Sources/Infinite\_Area\_Lights). 
 
 ## Heterogeneous Volume
-
-![](/output/heterogeneous.png)
+| BoundingBox  | Homogeneous | Heterogeneous |
+|-------|-------|------|
+| ![](/output/aabb.png)  | ![](/output/homogeneous.png)   | ![](/output/heterogeneous.png)  |
 
 We consider scattering, absorptive and non-emissive volume. For basics of volume rendering, please refer to [PBR book](https://www.pbr-book.org/3ed-2018/Volume\_Scattering/Volume\_Scattering\_Processes)
 

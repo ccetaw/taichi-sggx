@@ -7,7 +7,7 @@ from envmap import Envmap
 from render import Integrator
 from volume import Volume
 
-ti.init(arch=ti.gpu)
+ti.init(arch=ti.gpu, kernel_profiler=True)
 
 c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
                 [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
@@ -31,10 +31,12 @@ v2w = np.array([[2, 0, 0, -1],
 
 camera = PerspectiveCamera(35, 800, 800, c2w)
 envmap = Envmap('assets/Tokyo_BigSight_3k.hdr', l2w)
-volume = Volume(v2w, 256, random=True)
-integrator = Integrator(camera, envmap, volume, 64, 64, 32)
+volume = Volume(v2w, 256, hetero=True)
+integrator = Integrator(camera, envmap, volume, 32, 64, 32)
 
 integrator.render()
+ti.profiler.print_kernel_profiler_info('trace')
+# integrator.render_image()
 
 ti.tools.imshow(integrator.output)
 
