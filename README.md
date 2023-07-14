@@ -32,8 +32,11 @@ For simplicity, the volume is confined in an AABB and the data is stored in voxe
 ## Renderer
 The overall rendering equation is 
 
-$$\begin{align}L(\mathbf{x}, \omega) &= T\_r(\mathbf{x}, \mathbf{x}\_{\infty}(\omega, \mathbf{x}))L\_e(\omega) \\ &+ \int\_0^{z} T\_r(\mathbf{x}, \mathbf{x}\_t)\sigma\_t(\mathbf{x}\_t)\alpha(\mathbf{x}\_t)\int\_{S^2} f\_p(\mathbf{x}\_t,\omega,\omega')L\_e(\omega') d\omega'dt
-\end{align}$$
+$$
+\begin{align}L(\mathbf{x}, \omega) &= T\_r(\mathbf{x}, \mathbf{x}\_{\infty}(\omega, \mathbf{x}))L\_e(\omega) \\ 
+&+ \int\_0^{z} T\_r(\mathbf{x}, \mathbf{x}\_t)\sigma\_t(\mathbf{x}\_t)\alpha(\mathbf{x}\_t)\int\_{S^2} f\_p(\mathbf{x}\_t,\omega,\omega')L\_e(\omega') d\omega'dt
+\end{align}
+$$
 
 The radiance at point $\mathbf{x}$ from direction $\omega$ is composed of 2 terms. THe first term is the radiance from the background, with $T\_r(\mathbf{x},\mathbf{y})$ being the transmittance between points $\mathbf{x}$ and $\mathbf{x}$, $L\_e(\omega)$ being the radiance from the environment. As we mentioned, the environment radiance only depends on direction. And $\mathbf{x}\_\infty(\omega)$ is the point at infinity in direction $\omega$ from point $\mathbf{x}$.
 
