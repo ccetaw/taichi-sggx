@@ -23,7 +23,7 @@ We use an hdr image as environment map. The environment is considered placed so 
 
 We consider scattering, absorptive and non-emissive volume. For basics of volume rendering, please refer to [PBR book](https://www.pbr-book.org/3ed-2018/Volume\_Scattering/Volume\_Scattering\_Processes)
 
-For simplicity, the volume is confined in an AABB and the data is stored in voxels. Each voxel stores 2 3D vectors, standing for extinction coefficient and albedo. Trilinear interpolation is applied for points sampled in the volume. Also we consider uniform phase function, as we don't focus on heteroge
+For simplicity, the volume is confined in an AABB and the data is stored in voxels. Each voxel stores 2 3D vectors, standing for extinction coefficient and albedo. Trilinear interpolation is applied for points sampled in the volume. Also we consider uniform phase function, as we don't focus on heterogeneous volume.
 
 ## SGGX Volume
 [Work in Progess]

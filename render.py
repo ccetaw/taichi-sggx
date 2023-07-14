@@ -5,6 +5,7 @@ from taichi.math import vec3, max, min, exp
 from camera import PerspectiveCamera, Ray
 from envmap import Envmap
 from volume import Volume, AABB
+from utils import sample_uniform_sphere
 
 @ti.data_oriented
 class Integrator:
@@ -34,19 +35,28 @@ class Integrator:
                 ray = self.cam.gen_ray(i, j)
                 tmin, tmax, hit = self.intersect_aabb(ray, self.vol.get_aabb())
                 if (hit):
-                    self.sample_points(ray, tmin, tmax, self.points_1, self.N_samples_1)
                     color = vec3(0.0, 0.0, 0.0)
                     transmittance = vec3(1.0, 1.0, 1.0)
                     left = ray.o + tmin * ray.d
-                    right = ray.o + tmin * ray.d
+                    right = left
                     step = 1.0 / (self.N_samples_1 - 1) * (tmax - tmin)
-                    for s1 in range(self.N_samples_1 - 1):
+                    for s1 in range(self.N_samples_1 - 1): # Outer integral
                         right = left + step * ray.d
                         voxel = self.vol.at(right)
                         alpha = 1 - exp(-step*voxel.sigma)
-                        # for s2 in range(self.N_samples_2):
-                        #     pass
-                        color += transmittance * alpha * voxel.albedo
+                        L_s = vec3(0.0, 0.0, 0.0) 
+                        for s2 in range(self.N_samples_2): # Inner integral
+                            transmittance_s = vec3(1.0, 1.0, 1.0)
+                            ray_s = Ray(o=right, d=sample_uniform_sphere())
+                            tmin_s, tmax_s, hit_s = self.intersect_aabb(ray, self.vol.get_aabb())
+                            left_s = ray_s.o + tmin_s * ray_s.d
+                            right_s = left_s
+                            step_s = 1.0 / (self.N_samples_1 - 1) * (tmax_s - tmin_s)
+                            for _s2 in range(self.N_samples_1 - 1):
+                                transmittance_s *= self.vol.Tr(left_s, right_s)
+                            L_s = transmittance_s * self.envmap.eval(ray_s)
+
+                        color += transmittance * alpha * voxel.albedo * L_s
                         transmittance *= self.vol.Tr(left, right)
 
                         left = right
@@ -79,7 +89,3 @@ class Integrator:
 
         return max(0, tmin), tmax, hit # note the case that ray origin inside aabb
 
-    @ti.func
-    def sample_points(self, ray: Ray, tmin: float, tmax: float, points: ti.template(), n_samples: int):
-        for s in range(n_samples):
-            points[s] = ray.o + tmin * ray.d + s/(n_samples-1) * (tmax - tmin) * ray.d

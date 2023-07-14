@@ -1,5 +1,5 @@
 import taichi as ti
-from taichi.math import vec3
+from taichi.math import vec3, pi, acos, sqrt, sin, cos
 
 @ti.func
 def lerp(x, x0, x1, q0, q1):
@@ -29,4 +29,10 @@ def sample_uniform_sphere():
     u = ti.random()
     v = ti.random()
 
-    return vec3()
+    z = 2 * u - 1
+    phi = 2 * pi * v
+    r = sqrt(1 - z*z)
+    x = r * cos(phi)
+    y = r * sin(phi)
+
+    return vec3(x, y, z)
