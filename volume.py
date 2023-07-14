@@ -26,10 +26,10 @@ class Volume:
         
         self.data = Voxel.field(shape=(res, res, res))
         if random:
-            self.gen_random_volume()
+            self.gen_gradient_volume()
         else:
             self.data.sigma.fill(1)
-            self.data.albedo.fill(0.02)
+            self.data.albedo.fill(0.5)
 
     @ti.func 
     def at(self, x):
@@ -88,7 +88,7 @@ class Volume:
         return exp(-distance(x,y)*self.at(x).sigma)
 
     @ti.kernel
-    def gen_random_volume(self):
+    def gen_gradient_volume(self):
         for i,j,k in self.data:
-            self.data.albedo[i, j, k] = k/self.res * vec3(ti.random(), ti.random(), ti.random())
-            self.data.sigma[i, j, k] = vec3(0.02, 0.01, 0.08)
+            self.data.albedo[i, j, k] = k/self.res * vec3(0.7, 0.7, 0.7)
+            self.data.sigma[i, j, k] = vec3(0.7, 0.7, 0.1) + k/self.res * vec3(0.4, 0.1, 0.2)

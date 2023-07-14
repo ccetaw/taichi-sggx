@@ -32,9 +32,12 @@ v2w = np.array([[2, 0, 0, -1],
 camera = PerspectiveCamera(35, 800, 800, c2w)
 envmap = Envmap('assets/Tokyo_BigSight_3k.hdr', l2w)
 volume = Volume(v2w, 256, random=True)
-integrator = Integrator(camera, envmap, volume, 32, 64, 32)
+integrator = Integrator(camera, envmap, volume, 256, 64, 32)
 
 integrator.render()
 
 ti.tools.imshow(integrator.output)
+
+save_as = "./output/heterogeneous.png"
+ti.tools.imwrite(integrator.output, save_as)
 

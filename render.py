@@ -40,16 +40,18 @@ class Integrator:
                     left = ray.o + tmin * ray.d
                     right = ray.o + tmin * ray.d
                     step = 1.0 / (self.N_samples_1 - 1) * (tmax - tmin)
-                    for s in range(self.N_samples_1 - 1):
+                    for s1 in range(self.N_samples_1 - 1):
                         right = left + step * ray.d
                         voxel = self.vol.at(right)
                         alpha = 1 - exp(-step*voxel.sigma)
+                        # for s2 in range(self.N_samples_2):
+                        #     pass
                         color += transmittance * alpha * voxel.albedo
                         transmittance *= self.vol.Tr(left, right)
 
                         left = right
 
-                    self.output[i, j] += color + transmittance * self.envmap.eval(ray) / self.spp
+                    self.output[i, j] += (color + transmittance * self.envmap.eval(ray)) / self.spp
                 else:
                     self.output[i, j] += self.envmap.eval(ray) / self.spp
 

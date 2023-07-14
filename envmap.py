@@ -27,7 +27,7 @@ class Envmap:
             phi += 2 * pi
 
         x = phi * 0.5 / pi # in [0, 1]
-        y = 1- theta / pi  # in [0, 1], invert y axis
+        y = 1- theta / pi  # in [0, 1], invert y axis, as the convention conflicts with our camera space
         x = clamp(x, 0, 0.999) * (self.img.shape[0]-1) # avoid out of range
         y = clamp(y, 0, 0.999) * (self.img.shape[1]-1)
 

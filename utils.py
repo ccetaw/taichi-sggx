@@ -1,4 +1,5 @@
 import taichi as ti
+from taichi.math import vec3
 
 @ti.func
 def lerp(x, x0, x1, q0, q1):
@@ -22,3 +23,10 @@ def trilerp(x, x0, x1, q000, q100, q010, q110, q001, q101, q011, q111):
     qxy1 = lerp(x[1], x0[1], x1[1], qx01, qx11)
 
     return lerp(x[2], x0[2], x1[2], qxy0, qxy1)
+
+@ti.func 
+def sample_uniform_sphere():
+    u = ti.random()
+    v = ti.random()
+
+    return vec3()
