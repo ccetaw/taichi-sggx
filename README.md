@@ -26,7 +26,7 @@ We consider scattering, absorptive and non-emissive volume. For basics of volume
 
 For simplicity, the volume is confined in an AABB and the data is stored in voxels. Each voxel stores 2 3D vectors, standing for extinction coefficient and albedo. Trilinear interpolation is applied for points sampled in the volume. Also we consider uniform phase function, as we don't focus on heterogeneous volume.
 
-## SGGX Volume
+## SGGX Microflake
 [Work in Progess]
 
 ## Renderer
