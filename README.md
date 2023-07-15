@@ -2,7 +2,7 @@
 
 This repo contains a simplest implementation of volume rendering including
 - heterogeneous(homogeneous) volume rendering
-- SGGX volume rendering, please refer to [The SGGX Microfacet Distribution](https://research.nvidia.com/publication/2015-08\_sggx-microflake-distribution)
+- SGGX volume rendering, please refer to [The SGGX Microflake Distribution](https://research.nvidia.com/publication/2015-08\_sggx-microflake-distribution)
 
 As it's for validation use only, only necessary components are included:
 - perspective camera, with simple box reconstruction filter
