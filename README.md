@@ -1,4 +1,4 @@
-# SGGX Microfacet Model 
+# SGGX Microflake Model 
 
 This repo contains a simplest implementation of volume rendering including
 - heterogeneous(homogeneous) volume rendering
