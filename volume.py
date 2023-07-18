@@ -30,7 +30,7 @@ class Volume:
             self.data.albedo.fill(0.5)
 
     @ti.func 
-    def at(self, x):
+    def at(self, x:vec3):
         """
         voxel data at world space position x
         """
@@ -77,7 +77,7 @@ class Volume:
         return AABB(lb=lb, rt=rt)
 
     @ti.func 
-    def Tr(self, x, y):
+    def Tr(self, x: vec3, y: vec3):
         """
         Assuming constant density value between x and y
         Take the value at x

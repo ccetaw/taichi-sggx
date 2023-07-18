@@ -44,4 +44,5 @@ The second term is the accumulated scattering radiance. $\sigma\_t$ is the extin
 
 ## Log
 - Trilinear interpolation of voxels is a big rendering bottleneck, increasing the rendering time by a factor of 10
+- -> Replace recursive call of lerp removes the bottleneck.
 - Sampling on secondary rays are also expensive

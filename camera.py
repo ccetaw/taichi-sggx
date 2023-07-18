@@ -18,7 +18,7 @@ class PerspectiveCamera:
         # Python scope variables
         self.size = [width, height]
 
-        # Prepare taichi scope variables
+        # Taichi scope variables
         # Scalars here are in python scope thus can not be furthur assigned values
         self.fov = fov
         self.output_size = vec2(width, height)
