@@ -50,8 +50,16 @@ def sample_uniform_sphere() -> vec3:
     return vec3(x, y, z)
 
 @ti.func
-def build_orthonomal_basis(w3: vec3) -> mat3:
+def build_orthonomal_basis(w3: vec3) -> tuple[vec3, vec3]:
     w1 = vec3(0)
     w2 = vec3(0)
     if (w3.z < -0.9999999):
-        pass
+        w1 = vec3(0.0, -1.0, 0.0)
+        w2 = vec3(-1.0, 0.0, 0.0)
+    else:
+        a = 1.0 / (1.0 + w3.z)
+        b = -w3.x * w3.y * a
+        w1 = vec3(1 - w3.x * w3.x * a, b, -w3.x)
+        w2 = vec3(b, 1 - w3.y * w3.y * a, -w3.y)
+    
+    return w1, w2
