@@ -2,10 +2,8 @@ import taichi as ti
 from taichi.math import mat3, mat4, vec4, vec3, vec2, normalize
 import numpy as np
 
-@ti.dataclass
-class Ray:
-    o: vec3
-    d: vec3
+from utils import Ray
+
 
 @ti.data_oriented
 class PerspectiveCamera:

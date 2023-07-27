@@ -1,18 +1,8 @@
 import taichi as ti
 import numpy as np
-from taichi.math import mat4, vec3, vec4, clamp, distance, exp
+from taichi.math import vec3, clamp
 
-from utils import trilerp
-
-@ti.dataclass
-class Voxel:
-    density: vec3
-    albedo: vec3
-
-@ti.dataclass
-class AABB:
-    lb: vec3
-    rt: vec3
+from utils import trilerp, AABB, Voxel
 
 
 @ti.data_oriented
@@ -75,14 +65,6 @@ class Volume:
         lb = self.aabb.lb
         rt = self.aabb.rt
         return AABB(lb=lb, rt=rt)
-
-    @ti.func 
-    def Tr(self, x: vec3, y: vec3):
-        """
-        Assuming constant density value between x and y
-        Take the value at x
-        """
-        return exp(-distance(x,y)*self.at(y).density)
 
     @ti.kernel
     def gen_gradient_volume(self):

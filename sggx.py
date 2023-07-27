@@ -1,37 +1,39 @@
 import taichi as ti
 import numpy as np
-from taichi.math import pi, vec3, vec4, mat3, clamp, sqrt, dot, inverse, determinant, cos, sin, normalize, pow
+from taichi.math import pi, vec3, mat3, clamp, sqrt, dot, cos, sin, normalize, pow
 
 from volume import AABB
-from utils import trilerp, build_orthonomal_basis
-
-@ti.dataclass
-class SGGXVoxel:
-    albedo: vec3
-    density: float
-    S_mat: mat3
-
+from utils import trilerp, build_orthonomal_basis, SGGXVoxel
 
 @ti.data_oriented
 class SGGX:
 
-    def __init__(self, v2w, res, lerp) -> None:
-        self.aabb = AABB(lt=vec3(0,0,0), rt=vec3(1,1,1)) # In local space, aabb assumed to be [0,0,0] and [1,1,1]
-        self.v2w = v2w
+    def __init__(self, lb: vec3, rt: vec3, res: int, lerp: bool) -> None:
+        self.aabb = AABB(lb=lb, rt=rt) # In local space, aabb assumed to be [0,0,0] and [1,1,1]
         self.res = res
         self.lerp = lerp
         self.data = SGGXVoxel.field(shape=(res, res, res))
+        self.gen_uniform_sggx()
+
+    @ti.kernel
+    def gen_uniform_sggx(self):
+        for i,j,k in self.data:
+            self.data.albedo[i, j, k] = vec3(0.5, 0.5, 0.5)
+            self.data.density[i, j, k] = 10
+            self.data.S_mat[i, j, k] = mat3(0.1, 0, 0,
+                                            0, 0.1, 0,
+                                            0, 0, 1)
 
     @ti.func
     def at(self, x: vec3) -> SGGXVoxel:
-        tmp = vec4(x[0], x[1], x[2], 1)
-        tmp = self.w2v @ tmp
-        x = vec3(tmp.x, tmp.y, tmp.z)
-        x = clamp(x, xmin=vec3([0,0,0]), xmax=vec3([0.999,0.999,0.999]))
+        x = clamp(x, xmin=self.aabb.lb, xmax=self.aabb.rt-0.001)
+        x -= self.aabb.lb
+        x /= self.aabb.rt - self.aabb.lb
         x = x * (self.res - 1)
         x0 = ti.cast(x, int)
-        x1 = x0 + 1
+        voxel = SGGXVoxel()
         if self.lerp:
+            x1 = x0 + 1
             albedo = trilerp(x, x0, x1, 
                         self.data.albedo[x0[0], x0[1], x0[2]],
                         self.data.albedo[x1[0], x0[1], x0[2]],
@@ -53,14 +55,14 @@ class SGGX:
                         self.data.density[x1[0], x1[1], x1[2]])
             
             S_mat = trilerp(x, x0, x1, 
-                        self.data.eigen[x0[0], x0[1], x0[2]],
-                        self.data.eigen[x1[0], x0[1], x0[2]],
-                        self.data.eigen[x0[0], x1[1], x0[2]],
-                        self.data.eigen[x1[0], x1[1], x0[2]],
-                        self.data.eigen[x0[0], x0[1], x1[2]],
-                        self.data.eigen[x1[0], x0[1], x1[2]],
-                        self.data.eigen[x0[0], x1[1], x1[2]],
-                        self.data.eigen[x1[0], x1[1], x1[2]])
+                        self.data.S_mat[x0[0], x0[1], x0[2]],
+                        self.data.S_mat[x1[0], x0[1], x0[2]],
+                        self.data.S_mat[x0[0], x1[1], x0[2]],
+                        self.data.S_mat[x1[0], x1[1], x0[2]],
+                        self.data.S_mat[x0[0], x0[1], x1[2]],
+                        self.data.S_mat[x1[0], x0[1], x1[2]],
+                        self.data.S_mat[x0[0], x1[1], x1[2]],
+                        self.data.S_mat[x1[0], x1[1], x1[2]])
             voxel = SGGXVoxel(albedo, density, S_mat)
         else:
             voxel = self.data[x0]
@@ -68,9 +70,13 @@ class SGGX:
         return voxel
 
     @ti.func
-    def Tr(self, x: vec3, y: vec3):
-
-        pass
+    def get_aabb(self):
+        """
+        Return AABB of the volume in world space
+        """
+        lb = self.aabb.lb
+        rt = self.aabb.rt
+        return AABB(lb=lb, rt=rt)
 
     @ti.func
     def eval_specular(self, wi: vec3, wo: vec3, 
@@ -81,8 +87,8 @@ class SGGX:
 
     @ti.func
     def eval_diffuse(self, wi: vec3, wo: vec3,
-                       S_xx: float, S_yy: float, S_zz: float, 
-                       S_xy: float, S_xz: float, S_yz: float):
+                     S_xx: float, S_yy: float, S_zz: float, 
+                     S_xy: float, S_xz: float, S_yz: float):
          wm = self.sample_VNDF(wi, S_xx, S_yy, S_zz, S_xy, S_xz, S_yz)
          return 1.0 / pi * max(0.0, dot(wo, wm))
 
@@ -95,8 +101,36 @@ class SGGX:
         return wo
     
     @ti.func
-    def sample_diffuse(self):
-        pass
+    def sample_diffuse(self, wi: vec3,
+                       S_xx: float, S_yy: float, S_zz: float, 
+                       S_xy: float, S_xz: float, S_yz: float) -> vec3:
+        wm = self.sample_VNDF(wi, S_xx, S_yy, S_zz, S_xy, S_xz, S_yz)
+
+        w1, w2 = build_orthonomal_basis(wm)
+
+        # Uniform sample hemisphere
+        u3 = ti.random()
+        u4 = ti.random()
+
+        r1 = 2.0 * u3 - 1.0
+        r2 = 2.0 * u4 - 1.0
+
+        phi, r = 0.0, 0.0
+        if r1 == 0 and r2 == 0:
+            r, phi = 0, 0
+        elif r1*r1 > r2*r2:
+            r = r1
+            phi = (pi/4.0) * (r2/r1)
+        else:
+            r = r2
+            phi = (pi/2) - (r1/r2) * (pi/4.0)
+            
+        x = r * cos(phi)
+        y = r * sin(phi)
+        z = sqrt(1 - x*x - y*y)
+        wo = x*w1 + y*w2 + z*wm
+
+        return wo
 
     @ti.func
     def sample_VNDF(self, wi: vec3,
@@ -133,15 +167,6 @@ class SGGX:
         # rotate back to world basis
         return  wm_kji.x * wk + wm_kji.y * wj + wm_kji.z * wi
 
-
-    @ti.func
-    def pdf_specular(self):
-        pass
-
-    @ti.func
-    def pdf_diffuse(self):
-        pass
-
     @ti.func
     def D(self, wm: vec3, 
           S_xx: float, S_yy: float, S_zz: float, 
@@ -151,12 +176,12 @@ class SGGX:
         """
         detS = S_xx*S_yy*S_zz - S_xx*S_yz*S_yz - S_yy*S_xz*S_xz - S_zz*S_xy*S_xy + 2.0*S_xy*S_xz*S_yz
         den = wm.x*wm.x*(S_yy*S_zz-S_yz*S_yz) + wm.y*wm.y*(S_xx*S_zz-S_xz*S_xz) + wm.z*wm.z*(S_xx*S_yy-S_xy*S_xy) + 2.0*(wm.x*wm.y*(S_xz*S_yz-S_zz*S_xy) + wm.x*wm.z*(S_xy*S_yz-S_yy*S_xz) + wm.y*wm.z*(S_xy*S_xz-S_xx*S_yz))
-        D = pow(ti.abs(detS), 1.5) / (pi * den * den)
-        return D
+        result = pow(ti.abs(detS), 1.5) / (pi * den * den)
+        return result
 
     @ti.func
     def sigma(self, wi: vec3, 
               S_xx: float, S_yy: float, S_zz: float, 
               S_xy: float, S_xz: float, S_yz: float) -> float:
         sigma_squared = wi.x*wi.x*S_xx + wi.y*wi.y*S_yy + wi.z*wi.z*S_zz + 2.0 * (wi.x*wi.y*S_xy + wi.x*wi.z*S_xz + wi.y*wi.z*S_yz)
-        return sqrt(min(0, sigma_squared))
+        return sqrt(max(0, sigma_squared))
