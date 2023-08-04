@@ -1,5 +1,8 @@
 import taichi as ti
-from taichi.math import mat3, vec3, pi, sqrt, sin, cos, exp, distance
+from taichi.math import mat3, vec3, pi, sqrt, sin, cos, exp
+import numpy as np
+
+vecD = ti.types.vector(32, dtype=ti.f32)
 
 @ti.dataclass
 class Ray:
@@ -37,8 +40,8 @@ class Voxel:
     - density: 3-channel extinction coeff
     - albedo: 3-channel color
     """
-    density: vec3
-    albedo: vec3
+    density: float
+
 
 @ti.dataclass
 class SGGXVoxel:
@@ -51,11 +54,11 @@ class SGGXVoxel:
     - albedol: 3-channel color
     - S_mat: 3x3 SGGX matrix
     """
-    albedo: vec3
-    density: float
     S_mat: mat3
-
-
+    density: float
+    albedo: vec3
+    
+    
 @ti.func
 def lerp(x, x0, x1, q0, q1):
     """
@@ -157,3 +160,25 @@ def build_orthonomal_basis(w3: vec3) -> tuple[vec3, vec3]:
         w2 = vec3(b, 1 - w3.y * w3.y * a, -w3.y)
     
     return w1, w2
+
+@ti.func
+def inverse_cdf(weights, nbins):
+    """
+    Inverse sampling a PDF. Assume that weights sum up to 1 and the bins 
+    distribute between [0, 1].
+
+    Return a value between 0 and 1.
+    """
+    cdf = vecD(0.0)
+    below = 0
+    above = 0
+    u = ti.random()
+
+    for i in range(nbins):
+        cdf[i+1] = cdf[i] + weights[i]
+        if u > cdf[i+1]:
+            below = i
+            above = i+1
+            break
+    
+    return lerp(u, cdf[below], cdf[above], below/nbins, above/nbins)

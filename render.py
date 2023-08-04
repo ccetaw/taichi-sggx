@@ -1,21 +1,12 @@
 import taichi as ti
 from tqdm import tqdm
-from taichi.math import vec3, exp, distance
+from taichi.math import vec3, exp, min
 
 from camera import PerspectiveCamera
 from envmap import Envmap
 from volume import Volume
-from utils import sample_uniform_sphere, Ray, AABB
-from sggx import SGGX
+from utils import Ray, AABB
 
-
-
-@ti.func
-def Tr(x: vec3, y: vec3, density):
-    """
-    Calculate Transmittance between x and y, assuming constant density.
-    """
-    return exp(-distance(x,y)*density)
 
 @ti.func
 def intersect_edge(x: vec3, aabb: AABB) -> bool:
@@ -108,11 +99,11 @@ class AABBIntegrator:
 
 
 @ti.data_oriented
-class VolIntegrator:
+class SingleIntegrator:
     def __init__(self, 
                  cam: PerspectiveCamera, 
                  envmap: Envmap, 
-                 vol: Volume, 
+                 vol, 
                  spp: int, 
                  N_samples_1: int, 
                  N_samples_2: int,
@@ -134,7 +125,7 @@ class VolIntegrator:
     @ti.kernel
     def render_sample(self):
         """
-        Render 1 sample per pixel. 
+        Render 1 sample per pixel. Single scattering model.
         """
         aabb = self.vol.get_aabb()
         for i, j in self.output:
@@ -148,25 +139,17 @@ class VolIntegrator:
                 step = 1.0 / (self.N_samples_1 - 1) * (tmax - tmin)
                 for s1 in range(self.N_samples_1 - 1): # Outer integral
                     right = left + step * ray.d
-                    voxel = self.vol.at(right)
-                    alpha = 1 - exp(-step*voxel.density)
+                    alpha = 1 - exp(-step*self.vol.get_sigma_t((right+left)/2, -ray.d))
                     L_s = vec3(0.0, 0.0, 0.0) 
                     for s2 in range(self.N_samples_2): # Inner integral
                         transmittance_s = vec3(1.0, 1.0, 1.0)
-                        ray_s = Ray(o=right, d=sample_uniform_sphere())
+                        ray_s = Ray(o=(right+left)/2, d=self.vol.sample_p((right+left)/2, -ray.d))
                         tmin_s, tmax_s, _ = intersect_aabb(ray, aabb)
-                        left_s = ray_s.o + tmin_s * ray_s.d
-                        right_s = left_s
-                        step_s = 1.0 / (self.N_samples_3 - 1) * (tmax_s - tmin_s)
-                        for s3 in range(self.N_samples_3 - 1): # Inner transmittance
-                            right_s = left_s + step_s * ray_s.d
-                            voxel_s = self.vol.at(right_s)
-                            transmittance_s *= Tr(left_s, right_s, voxel_s.density)
-                            left_s = right_s
+                        transmittance_s = self.vol.Tr(tmin_s, tmax_s, ray_s, self.N_samples_3)
                         L_s += transmittance_s * self.envmap.eval(ray_s) / self.N_samples_2
 
-                    color += transmittance * alpha * voxel.albedo * L_s
-                    transmittance *= Tr(left, right, voxel.density)
+                    color += transmittance * alpha * self.vol.get_albedo((right+left)/2) * L_s
+                    transmittance *= 1 - alpha
 
                     left = right
 
@@ -176,25 +159,25 @@ class VolIntegrator:
 
 
 @ti.data_oriented
-class SGGXIntegrator:
+class PathIntegrator:
     def __init__(self, 
                  cam: PerspectiveCamera, 
                  envmap: Envmap, 
-                 sggx: SGGX, 
+                 vol: Volume, 
                  spp: int, 
-                 N_samples_1: int, 
-                 N_samples_2: int,
-                 N_samples_3: int) -> None:
+                 max_depth: int, 
+                 ruassian_roulette_start: int,
+                 n_samples: int) -> None:
         self.cam = cam
         self.envmap = envmap
-        self.sggx = sggx
+        self.vol = vol
         self.spp = spp
-        self.N_samples_1 = N_samples_1
-        self.N_samples_2 = N_samples_2
-        self.N_samples_3 = N_samples_3
+        self.max_depth = max_depth
+        self.ruassian_roullete_start = ruassian_roulette_start
+        self.n_samples = n_samples
 
         self.output = ti.Vector.field(3, dtype=float, shape=self.cam.size) # Default init to 0
-    
+
     def render(self):
         for _ in tqdm(range(self.spp), desc="Rendering"):
             self.render_sample()
@@ -202,47 +185,45 @@ class SGGXIntegrator:
     @ti.kernel
     def render_sample(self):
         """
-        Render 1 sample per pixel. 
+        Path tracing. Use ray marching to sample medium interaction point. 
+        Only material sampling.
         """
-        aabb = self.sggx.get_aabb()
+        aabb = self.vol.get_aabb()
         for i, j in self.output:
             ray = self.cam.gen_ray(i, j)
             tmin, tmax, hit = intersect_aabb(ray, aabb)
-            if (hit):
-                color = vec3(0.0, 0.0, 0.0)
-                transmittance = vec3(1.0, 1.0, 1.0)
-                left = ray.o + tmin * ray.d
-                right = left
-                step = 1.0 / (self.N_samples_1 - 1) * (tmax - tmin)
-                for s1 in range(self.N_samples_1 - 1): # Outer integral
-                    right = left + step * ray.d
-                    voxel = self.sggx.at(right)
-                    S_xx, S_yy, S_zz, S_xy, S_xz, S_yz = voxel.S_mat[0,0], voxel.S_mat[1,1], voxel.S_mat[2,2], voxel.S_mat[0,1], voxel.S_mat[0,2], voxel.S_mat[1,2]
-                    sigma_t = self.sggx.sigma(-ray.d, S_xx, S_yy, S_zz, S_xy, S_xz, S_yz) * voxel.density
-                    alpha = 1 - exp(-step*sigma_t)
-                    L_s = vec3(0.0, 0.0, 0.0) 
-                    for s2 in range(self.N_samples_2): # Inner integral
-                        transmittance_s = vec3(1.0, 1.0, 1.0)
-                        ray_s = Ray(o=right, d=self.sggx.sample_specular(-ray.d, S_xx, S_yy, S_zz, S_xy, S_xz, S_yz))
-                        tmin_s, tmax_s, _ = intersect_aabb(ray, aabb)
-                        left_s = ray_s.o + tmin_s * ray_s.d
-                        right_s = left_s
-                        step_s = 1.0 / (self.N_samples_3 - 1) * (tmax_s - tmin_s)
-                        for s3 in range(self.N_samples_3 - 1): # Inner transmittance
-                            right_s = left_s + step_s * ray_s.d
-                            voxel_s = self.sggx.at(right_s)
-                            S_xx_s, S_yy_s, S_zz_s, S_xy_s, S_xz_s, S_yz_s = voxel_s.S_mat[0,0], voxel_s.S_mat[1,1], voxel_s.S_mat[2,2], voxel_s.S_mat[0,1], voxel_s.S_mat[0,2], voxel_s.S_mat[1,2]
-                            sigma_t_s = self.sggx.sigma(-ray_s.d, S_xx_s, S_yy_s, S_zz_s, S_xy_s, S_xz_s, S_yz_s) * voxel_s.density
-                            transmittance_s *= Tr(left_s, right_s, sigma_t_s)
-                            left_s = right_s
-                        L_s += transmittance_s * self.envmap.eval(ray_s) / self.N_samples_2
+            if hit:
+                # Run path tracing
+                L = vec3(0.0)
+                beta = vec3(1.0)
+                bounces = 0
+                while(True and bounces < self.max_depth):
+                    L += beta * self.vol.Tr(tmin, tmax, ray, self.n_samples) * self.envmap.eval(ray)
 
-                    color += transmittance * alpha * voxel.albedo * L_s
-                    transmittance *= Tr(left, right, sigma_t)
+                    # Ruassian roulette termination
+                    rp = 1.0
+                    if bounces > self.ruassian_roullete_start:
+                        rp = min(beta.max(), 0.99)
+                    if (rp == 0.0 or ti.random() > rp):
+                        break
+                    else:
+                        beta /= rp
+                    
+                    # Sample next ray
+                    scatter, t, weight = self.vol.sample(tmin, tmax, ray, self.n_samples)
+                    if scatter:
+                        p = ray.o + t * ray.d
+                        wo = self.vol.sample_p(p, -ray.d)
+                        beta *= weight
+                        ray = Ray(p, wo)
+                        tmin, tmax, hit = intersect_aabb(ray, aabb)
+                        if tmax < 0.001:
+                            break
+                    else:
+                        break
+                    bounces += 1
 
-                    left = right
+                self.output[i, j] += L / self.spp
 
-                self.output[i, j] += (color + transmittance * self.envmap.eval(ray)) / self.spp
             else:
                 self.output[i, j] += self.envmap.eval(ray) / self.spp
-
