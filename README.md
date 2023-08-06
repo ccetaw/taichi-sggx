@@ -9,7 +9,7 @@ As it's for validation use only, only necessary components are included:
 - environment map
 - voxel based volume representation
 - transform could be applied on above components
-- numerical integrator, no path tracing(might be added)
+- single scattering model, path tracing
 
 ## Camera
 We follow the OpenGL camera convention that the camera space is right-handed and the z-axis faces backwards. For convenience, we consider a image plane at focus and don't consider near and far clip. Please refer to [OpenGL Transformation](http://www.songho.ca/opengl/gl\_projectionmatrix.html)
@@ -20,14 +20,24 @@ We use an hdr image as environment map. The environment is considered placed so 
 ## Heterogeneous Volume
 | BoundingBox  | Homogeneous | Heterogeneous |
 |-------|-------|------|
-| ![](/output/aabb.png)  | ![](/output/homogeneous.png)   | ![](/output/heterogeneous.png)  |
+| <img align="center" src="./output/aabb.png" width="300">  | <img align="center" src="./output/single_homogeneous.png" width="300">   | <img align="center" src="./output/single_heterogeneous.png" width="300">  |
 
-We consider scattering, absorptive and non-emissive volume. For basics of volume rendering, please refer to [PBR book](https://www.pbr-book.org/3ed-2018/Volume\_Scattering/Volume\_Scattering\_Processes)
+We consider scattering, absorptive and non-emissive volume. For basics of volume rendering, please refer to [PBR book](https://www.pbr-book.org/3ed-2018/Volume\_Scattering/Volume\_Scattering\_Processes).
 
 For simplicity, the volume is confined in an AABB and the data is stored in voxels. Each voxel stores 2 3D vectors, standing for extinction coefficient and albedo. Trilinear interpolation is applied for points sampled in the volume. Also we consider uniform phase function, as we don't focus on heterogeneous volume.
 
+With path tracing, we have 
+
+| BoundingBox  | Homogeneous | Heterogeneous |
+|-------|-------|------|
+| <img align="center" src="./output/aabb.png" width="300">  | <img align="center" src="./output/path_homogeneous.png" width="300">   | <img align="center" src="./output/path_heterogeneous.png" width="300">  |
+
 ## SGGX Microflake
-[Work in Progess]
+The SGGX microflake model is implemented as in the supplement material of originial paper.
+
+| BoundingBox  | SGGX |
+|-------|-------|
+| <img align="center" src="./output/aabb.png" width="300">  | <img align="center" src="./output/path_sggx.png" width="300">   | 
 
 ## Renderer
 The overall rendering equation is 
@@ -41,8 +51,3 @@ $$
 The radiance at point $\mathbf{x}$ from direction $\omega$ is composed of 2 terms. THe first term is the radiance from the background, with $T\_r(\mathbf{x},\mathbf{y})$ being the transmittance between points $\mathbf{x}$ and $\mathbf{x}$, $L\_e(\omega)$ being the radiance from the environment. As we mentioned, the environment radiance only depends on direction. And $\mathbf{x}\_\infty(\omega)$ is the point at infinity in direction $\omega$ from point $\mathbf{x}$.
 
 The second term is the accumulated scattering radiance. $\sigma\_t$ is the extincition coefficient, $\alpha$ is the albedo. In SGGX rendering, these two terms may depend on directions. The inner integration is the radiance from all directions scattered to direction $\omega$. $f\_p$ is the phase function.
-
-## Log
-- Trilinear interpolation of voxels is a big rendering bottleneck, increasing the rendering time by a factor of 10
-- -> Replace recursive call of lerp removes the bottleneck.
-- Sampling on secondary rays are also expensive

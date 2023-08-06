@@ -68,19 +68,13 @@ class AABBIntegrator:
     def __init__(self, 
                  cam: PerspectiveCamera, 
                  envmap: Envmap,
-                 vol: Volume,
-                 spp: int) -> None:
+                 vol: Volume) -> None:
         self.cam = cam
         self.envmap = envmap
         self.vol = vol
-        self.spp = spp
 
         self.output = ti.Vector.field(3, dtype=float, shape=self.cam.size)
     
-    def render(self):
-        for _ in tqdm(range(self.spp), desc="Rendering"):
-            self.render_sample()
-
     @ti.kernel
     def render_sample(self):
         aabb = self.vol.get_aabb()
@@ -91,11 +85,11 @@ class AABBIntegrator:
             if hit:
                 hit_edge = intersect_edge(its, aabb)
                 if hit_edge:
-                    self.output[i, j] += vec3(1) / self.spp
+                    self.output[i, j] += vec3(1)
                 else:
-                    self.output[i, j] += vec3(0.1, 0.8, 0.65) / self.spp
+                    self.output[i, j] += vec3(0.1, 0.8, 0.65)
             else:
-                self.output[i, j] += self.envmap.eval(ray) / self.spp
+                self.output[i, j] += self.envmap.eval(ray)
 
 
 @ti.data_oriented
@@ -104,14 +98,12 @@ class SingleIntegrator:
                  cam: PerspectiveCamera, 
                  envmap: Envmap, 
                  vol, 
-                 spp: int, 
                  N_samples_1: int, 
                  N_samples_2: int,
                  N_samples_3: int) -> None:
         self.cam = cam
         self.envmap = envmap
         self.vol = vol
-        self.spp = spp
         self.N_samples_1 = N_samples_1
         self.N_samples_2 = N_samples_2
         self.N_samples_3 = N_samples_3
@@ -153,9 +145,9 @@ class SingleIntegrator:
 
                     left = right
 
-                self.output[i, j] += (color + transmittance * self.envmap.eval(ray)) / self.spp
+                self.output[i, j] += (color + transmittance * self.envmap.eval(ray))
             else:
-                self.output[i, j] += self.envmap.eval(ray) / self.spp
+                self.output[i, j] += self.envmap.eval(ray)
 
 
 @ti.data_oriented
@@ -164,14 +156,12 @@ class PathIntegrator:
                  cam: PerspectiveCamera, 
                  envmap: Envmap, 
                  vol: Volume, 
-                 spp: int, 
                  max_depth: int, 
                  ruassian_roulette_start: int,
                  n_samples: int) -> None:
         self.cam = cam
         self.envmap = envmap
         self.vol = vol
-        self.spp = spp
         self.max_depth = max_depth
         self.ruassian_roullete_start = ruassian_roulette_start
         self.n_samples = n_samples
@@ -223,7 +213,7 @@ class PathIntegrator:
                         break
                     bounces += 1
 
-                self.output[i, j] += L / self.spp
+                self.output[i, j] += L
 
             else:
-                self.output[i, j] += self.envmap.eval(ray) / self.spp
+                self.output[i, j] += self.envmap.eval(ray)

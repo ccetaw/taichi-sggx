@@ -182,3 +182,9 @@ def inverse_cdf(weights, nbins):
             break
     
     return lerp(u, cdf[below], cdf[above], below/nbins, above/nbins)
+
+
+@ti.kernel
+def to_image(img: ti.template(), out: ti.template(), spp: int):
+    for I in ti.grouped(img):
+        img[I] = out[I] / spp
