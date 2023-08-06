@@ -11,6 +11,14 @@ As it's for validation use only, only necessary components are included:
 - transform could be applied on above components
 - single scattering model, path tracing
 
+To run this repo, installing `taichi` and `numpy` will be sufficient. Use
+
+```
+python main.py
+```
+
+to render.
+
 ## Camera
 We follow the OpenGL camera convention that the camera space is right-handed and the z-axis faces backwards. For convenience, we consider a image plane at focus and don't consider near and far clip. Please refer to [OpenGL Transformation](http://www.songho.ca/opengl/gl\_projectionmatrix.html)
 

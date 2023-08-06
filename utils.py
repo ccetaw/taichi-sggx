@@ -1,6 +1,5 @@
 import taichi as ti
 from taichi.math import mat3, vec3, pi, sqrt, sin, cos, exp
-import numpy as np
 
 vecD = ti.types.vector(32, dtype=ti.f32)
 
