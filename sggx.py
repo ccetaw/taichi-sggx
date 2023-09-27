@@ -13,10 +13,10 @@ class SGGX:
         self.res = res
         self.lerp = lerp
         self.data = SGGXVoxel.field(shape=(res, res, res))
-        self.gen_uniform_sggx()
+        self.gen_bunny()
 
     @ti.kernel
-    def gen_uniform_sggx(self):
+    def gen_bunny(self):
         for i,j,k in self.data:
             self.data.albedo[i, j, k] = vec3(0.8, 0.5, 0.5)
             self.data.density[i, j, k] = 1
