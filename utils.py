@@ -168,18 +168,18 @@ def inverse_cdf(weights, nbins):
     Return a value between 0 and 1.
     """
     cdf = vecD(0.0)
-    below = 0
-    above = 0
+    below = 0.0
+    above = 0.0
     u = ti.random()
 
     for i in range(nbins):
         cdf[i+1] = cdf[i] + weights[i]
         if u > cdf[i+1]:
-            below = i
-            above = i+1
+            below = float(i)
+            above = float(i+1)
             break
     
-    return lerp(u, cdf[below], cdf[above], below/nbins, above/nbins)
+    return lerp(u, cdf[int(below)], cdf[int(above)], below/nbins, above/nbins)
 
 
 @ti.kernel
@@ -244,9 +244,10 @@ def sd_bunny(p: vec3) -> float:
     return sd
 
 @ti.func
-def laplacian_cdf(s: float, beta=10):
+def laplacian_cdf(s: float, beta=0.01):
+    result = 0.0
     if s <= 0:
-        return 0.5 * exp(s/beta)
+        result = 0.5 * exp(s/beta)
     else:
-        return 1 - 0.5 * exp(-s/beta)
-    pass
+        result = 1 - 0.5 * exp(-s/beta)
+    return result

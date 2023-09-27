@@ -12,14 +12,14 @@ from utils import to_image
 ti.init(arch=ti.gpu, kernel_profiler=True, device_memory_fraction=0.8)
 
 # Camera setting
-c2w = np.array([[-np.sqrt(2)/2, -np.sqrt(6)/6, np.sqrt(3)/3, 2],
-                [np.sqrt(2)/2, -np.sqrt(6)/6, np.sqrt(3)/3, 2],
-                [0, np.sqrt(6)/3, np.sqrt(3)/3, 2],
-                [0, 0, 0, 1]], dtype=float)
-# c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
-#                 [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
-#                 [0, 1, 0, 0],
+# c2w = np.array([[-np.sqrt(2)/2, -np.sqrt(6)/6, np.sqrt(3)/3, 2],
+#                 [np.sqrt(2)/2, -np.sqrt(6)/6, np.sqrt(3)/3, 2],
+#                 [0, np.sqrt(6)/3, np.sqrt(3)/3, 2],
 #                 [0, 0, 0, 1]], dtype=float)
+c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+                [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+                [0, 1, 0, 0],
+                [0, 0, 0, 1]], dtype=float)
 fov = 30
 width = 800 
 height = 800
@@ -35,10 +35,10 @@ envmap = Envmap(path=path, l2w=l2w)
 # Volume setting
 lb = vec3(-1,-1,-1)
 rt = vec3(1,1,1)
-sigma_s = vec3(0.8, 0.5, 0.5)
+sigma_s = vec3(0.8, 0.1, 0.1)
 sigma_t = 1
 res = 256
-hetero = False
+hetero = True
 lerp = True
 ks = 0.5
 # volume = Volume(lb=lb, rt=rt, 
@@ -53,7 +53,7 @@ volume = SGGX(lb=lb, rt=rt,
             lerp=lerp)
 
 # Integrator setting
-spp = 256
+spp = 1
 max_depth = 100
 ruassian_roulette_start = 10
 n_samples = 32

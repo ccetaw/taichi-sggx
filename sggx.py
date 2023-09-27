@@ -2,7 +2,7 @@ import taichi as ti
 from taichi.math import pi, vec3, mat3, clamp, sqrt, dot, cos, sin, normalize, pow, exp
 
 from volume import AABB
-from utils import trilerp, build_orthonomal_basis, inverse_cdf, SGGXVoxel, Ray, vecD
+from utils import trilerp, build_orthonomal_basis, inverse_cdf, SGGXVoxel, Ray, vecD, sd_bunny, laplacian_cdf
 
 @ti.data_oriented
 class SGGX:
@@ -11,17 +11,22 @@ class SGGX:
         self.aabb = AABB(lb=lb, rt=rt)
         self.ks = ks
         self.res = res
+        self.units = (rt - lb) / (res - 1)
         self.lerp = lerp
         self.data = SGGXVoxel.field(shape=(res, res, res))
         self.gen_bunny()
 
+    @ti.func
+    def index2xyz(self, i, j, k):
+        return self.aabb.lb + vec3(i, j, k) * self.units
+
     @ti.kernel
     def gen_bunny(self):
         for i,j,k in self.data:
-            self.data.albedo[i, j, k] = vec3(0.8, 0.5, 0.5)
-            self.data.density[i, j, k] = 1
-            self.data.S_mat[i, j, k] = mat3(0.00001, 0, 0,
-                                            0, 0.00001, 0,
+            self.data.albedo[i, j, k] = vec3(0.1, 0.9, 0.6) * laplacian_cdf(-sd_bunny(self.index2xyz(i, j, k)))
+            self.data.density[i, j, k] =  5 * laplacian_cdf(-sd_bunny(self.index2xyz(i, j, k)))
+            self.data.S_mat[i, j, k] = mat3(1, 0, 0,
+                                            0, 1, 0,
                                             0, 0, 1)
     
     @ti.func
@@ -58,6 +63,7 @@ class SGGX:
         rayPDF = rayPDF/rayPDF.sum()
 
         t = tmin + inverse_cdf(rayPDF, n_samples) * (tmax - tmin) * n_samples / (n_samples - 1)
+        print(inverse_cdf(rayPDF, n_samples) )
         if t < tmax: # Volume scattering
             scatter = True
             beta = self.albedo(ray.o+t*ray.d)

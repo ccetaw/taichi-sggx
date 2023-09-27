@@ -1,7 +1,7 @@
 import taichi as ti
 from taichi.math import vec3, clamp, exp
 
-from utils import trilerp, inverse_cdf, sample_uniform_sphere, AABB, Voxel, Ray,  vecD
+from utils import trilerp, inverse_cdf, sample_uniform_sphere, AABB, Voxel, Ray,  vecD, sd_bunny, laplacian_cdf
 
 
 @ti.data_oriented
@@ -10,6 +10,7 @@ class Volume:
     def __init__(self, lb: vec3, rt: vec3, sigma_s: vec3, sigma_t: float, res: int, hetero: bool = False, lerp: bool =False) -> None:
         self.aabb = AABB(lb=lb, rt=rt) # In local space, aabb assumed to be [0,0,0] and [1,1,1]
         self.res = res
+        self.units = (rt - lb) / (res - 1)
         self.lerp=lerp
         self.sigma_s = sigma_s
         self.sigma_t = sigma_t
@@ -20,6 +21,10 @@ class Volume:
         else:
             self.data.density.fill(1)
     
+    @ti.func
+    def index2xyz(self, i, j, k):
+        return self.aabb.lb + vec3(i, j, k) * self.units
+
     @ti.func
     def density(self, x: vec3) -> float:
         """
@@ -115,4 +120,5 @@ class Volume:
     @ti.kernel
     def gen_gradient_volume(self):
         for i,j,k in self.data:
-            self.data.density[i, j, k] =  k/self.res
+           self.data.density[i, j, k]  = 5 * laplacian_cdf(-sd_bunny(self.index2xyz(i, j, k)))
+           # self.data.density[i, j, k] =  k/self.res

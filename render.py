@@ -207,7 +207,7 @@ class PathIntegrator:
                         beta *= weight
                         ray = Ray(p, wo)
                         tmin, tmax, hit = intersect_aabb(ray, aabb)
-                        if tmax < 0.001:
+                        if tmax < 0.0001:
                             break
                     else:
                         break
