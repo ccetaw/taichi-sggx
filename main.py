@@ -16,6 +16,10 @@ c2w = np.array([[-np.sqrt(2)/2, -np.sqrt(6)/6, np.sqrt(3)/3, 2],
                 [np.sqrt(2)/2, -np.sqrt(6)/6, np.sqrt(3)/3, 2],
                 [0, np.sqrt(6)/3, np.sqrt(3)/3, 2],
                 [0, 0, 0, 1]], dtype=float)
+# c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+#                 [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+#                 [0, 1, 0, 0],
+#                 [0, 0, 0, 1]], dtype=float)
 fov = 30
 width = 800 
 height = 800
@@ -76,7 +80,7 @@ canvas = window.get_canvas()
 
 
 i = 1
-save_as = "./output/path_sggx.png"
+save_as = "test.png"
 img = ti.Vector.field(3, dtype=float, shape=[width, height])
 while window.running:
     if i <= spp:
