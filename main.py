@@ -16,12 +16,12 @@ ti.init(arch=ti.gpu, kernel_profiler=True, device_memory_fraction=0.8)
 #                 [np.sqrt(2)/2, -np.sqrt(6)/6, np.sqrt(3)/3, 2],
 #                 [0, np.sqrt(6)/3, np.sqrt(3)/3, 2],
 #                 [0, 0, 0, 1]], dtype=float)
-c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
-                [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
-                [0, 1, 0, 0],
-                [0, 0, 0, 1]], dtype=float)
-c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
-                [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+# c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+#                 [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+#                 [0, 1, 0, 0],
+#                 [0, 0, 0, 1]], dtype=float)
+c2w = np.array([[0, 0, 1, 2],
+                [-1, 0, 0, 0],
                 [0, 1, 0, 0],
                 [0, 0, 0, 1]], dtype=float)
 fov = 30

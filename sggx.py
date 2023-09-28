@@ -1,8 +1,8 @@
 import taichi as ti
-from taichi.math import pi, vec3, mat3, clamp, sqrt, dot, cos, sin, normalize, pow, exp
+from taichi.math import pi, vec2, vec3, mat3, clamp, sqrt, dot, cos, sin, normalize, pow, exp, mat2
 
 from volume import AABB
-from utils import trilerp, build_orthonomal_basis, inverse_cdf, SGGXVoxel, Ray, vecD, sd_bunny, laplacian_cdf
+from utils import trilerp, build_orthonomal_basis, inverse_cdf, SGGXVoxel, Ray, vecD, sd_bunny, laplacian_cdf, weight_func, length
 
 @ti.data_oriented
 class SGGX:
@@ -14,11 +14,28 @@ class SGGX:
         self.units = (rt - lb) / (res - 1)
         self.lerp = lerp
         self.data = SGGXVoxel.field(shape=(res, res, res))
+        self.local_r = 0.1 * (self.aabb.rt - self.aabb.lb).max()
+        self.n_voxel = int(self.local_r / self.units.min())
+        self.eps = 1e-2
+        self.neighbors = vec2.field(shape=(2*self.n_voxel+1, 2*self.n_voxel+1, 2*self.n_voxel+1), 
+                                    offset=(-self.n_voxel, -self.n_voxel, -self.n_voxel))
         self.gen_bunny()
+        self.calc_numeric_gradiant()
+        self.calc_tangent_bitangent()
 
     @ti.func
     def index2xyz(self, i, j, k):
         return self.aabb.lb + vec3(i, j, k) * self.units
+
+    @ti.func
+    def xyz2index(self, x):
+        x = clamp(p, xmin=self.aabb.lb, xmax=self.aabb.rt-0.001)
+        x -= self.aabb.lb
+        x /= self.aabb.rt - self.aabb.lb
+        x = x * (self.res - 1)
+        x0 = ti.cast(x, int)
+        return x0.x, x0.y, x0.z
+        
 
     @ti.kernel
     def gen_bunny(self):
@@ -28,6 +45,76 @@ class SGGX:
             self.data.S_mat[i, j, k] = mat3(1, 0, 0,
                                             0, 1, 0,
                                             0, 0, 1)
+
+    @ti.kernel
+    def calc_numeric_gradiant(self):
+        """
+        Calculate gradient using Sobel operator.
+
+        Note:
+        Seg fault is handled by taichi, outside being 0.
+        """
+        for i, j, k in self.data.normal:
+            gx = self.data.density[i+1, j-1, k-1] + 2*self.data.density[i+1, j, k-1] + self.data.density[i+1, j+1, k-1] \
+                +2*self.data.density[i+1, j-1, k] + 4*self.data.density[i+1, j, k  ] + 2*self.data.density[i+1, j+1, k] \
+                +self.data.density[i+1, j-1, k+1] + 2*self.data.density[i+1, j, k+1] + self.data.density[i+1, j+1, k+1] \
+                -self.data.density[i-1, j-1, k-1] - 2*self.data.density[i-1, j, k-1] - self.data.density[i-1, j+1, k-1] \
+                -2*self.data.density[i-1, j-1, k] - 4*self.data.density[i-1, j, k  ] - 2*self.data.density[i-1, j+1, k] \
+                -self.data.density[i-1, j-1, k+1] - 2*self.data.density[i-1, j, k+1] - self.data.density[i-1, j+1, k+1]
+
+            gy = self.data.density[i-1, j+1, k-1] + 2*self.data.density[i, j+1, k-1] + self.data.density[i+1, j+1, k-1] \
+                +2*self.data.density[i-1, j+1, k] + 4*self.data.density[i, j+1, k  ] + 2*self.data.density[i+1, j+1, k] \
+                +self.data.density[i-1, j+1, k+1] + 4*self.data.density[i, j+1, k+1] + self.data.density[i+1, j+1, k+1] \
+                -self.data.density[i-1, j-1, k-1] - 2*self.data.density[i, j-1, k-1] - self.data.density[i+1, j-1, k-1] \
+                -2*self.data.density[i-1, j-1, k] - 4*self.data.density[i, j-1, k  ] - 2*self.data.density[i+1, j-1, k] \
+                -self.data.density[i-1, j-1, k+1] - 2*self.data.density[i, j-1, k+1] - self.data.density[i+1, j-1, k+1]
+
+            gz = self.data.density[i-1, j-1, k+1] + 2*self.data.density[i-1, j, k+1] + self.data.density[i-1, j+1, k+1] \
+                +2*self.data.density[i, j-1, k+1] + 4*self.data.density[i, j, k+1  ] + 2*self.data.density[i, j+1, k+1] \
+                +self.data.density[i+1, j-1, k+1] + 2*self.data.density[i+1, j, k+1] + self.data.density[i+1, j+1, k+1] \
+                -self.data.density[i-1, j-1, k-1] - 2*self.data.density[i-1, j, k-1] - self.data.density[i-1, j+1, k-1] \
+                -2*self.data.density[i, j-1, k-1] - 4*self.data.density[i, j, k-1  ] - 2*self.data.density[i, j+1, k-1] \
+                -self.data.density[i+1, j-1, k-1] - 2*self.data.density[i+1, j, k+1] - self.data.density[i+1, j+1, k+1]
+
+            self.data.normal[i,j,k] = vec3(gx, gy, gz).normalized()
+
+    @ti.kernel
+    def calc_tangent_bitangent(self):
+        for i0, j0, k0 in self.data.tangent:
+            local_x, local_y = build_orthonomal_basis(self.data.normal[i0,j0,k0])
+            centroid = vec2(0)
+            for i in range(-self.n_voxel, self.n_voxel+1):
+                for j in range(-self.n_voxel, self.n_voxel+1):
+                    for k in range(-self.n_voxel, self.n_voxel+1):
+                        # select point having similar values
+                        if self.data.density[i0+i, j0+j, k0+k] - self.data.density[i0, j0, k0] < self.eps:
+                            p = self.index2xyz(i0+i, j0+j, k0+k) - self.index2xyz(i0, j0, k0)
+                            # project to tangent plane
+                            p = p - dot(p, self.data.normal[i, j, k]) * self.data.normal[i, j, k]
+                            uv = vec2(dot(p, local_x), dot(p, local_y))
+                            self.neighbors[i, j, k] = uv
+                            centroid += uv
+            centroid /= (2*self.n_voxel+1)**3
+            C = mat2(0.0, 0.0, 0.0, 0.0)
+            for i in range(-self.n_voxel, self.n_voxel+1):
+                for j in range(-self.n_voxel, self.n_voxel+1):
+                    for k in range(-self.n_voxel, self.n_voxel+1):
+                        xi = self.neighbors[i, j, k] - centroid
+                        weight = weight_func(length(xi)/self.local_r)
+                        C[0, 0] += xi.x * xi.x * weight
+                        C[0, 1] += xi.x * xi.y * weight
+                        C[1, 0] += xi.y * xi.x * weight
+                        C[1, 1] += xi.y * xi.y * weight
+
+            tr = C[0, 0] + C[1, 1]
+            det = C[0, 0]*C[1, 1] - C[0, 1]*C[1, 0]
+            lmd_1 = 0.5 * tr - sqrt(0.25 * tr * tr - det)
+            lmd_2 = 0.5 * tr + sqrt(0.25 * tr * tr - det)
+            LMD_1 = vec2(C[0, 1], lmd_1 - C[0, 0])
+            LMD_2 = vec2(C[0, 1], lmd_2 - C[0, 0])
+
+            self.data.tangent[i0,j0,k0] = normalize(LMD_1.x * local_x + LMD_1.y * local_y)
+            self.data.bitangent[i0,j0,k0] = normalize(LMD_2.x * local_x + LMD_2.y * local_y)
     
     @ti.func
     def Tr(self, tmin: float, tmax: float, ray: Ray, n_samples: int):

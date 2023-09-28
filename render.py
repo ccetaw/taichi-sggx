@@ -98,12 +98,14 @@ class SingleIntegrator:
                  cam: PerspectiveCamera, 
                  envmap: Envmap, 
                  vol, 
+                 spp: int,
                  N_samples_1: int, 
                  N_samples_2: int,
                  N_samples_3: int) -> None:
         self.cam = cam
         self.envmap = envmap
         self.vol = vol
+        self.spp = spp
         self.N_samples_1 = N_samples_1
         self.N_samples_2 = N_samples_2
         self.N_samples_3 = N_samples_3

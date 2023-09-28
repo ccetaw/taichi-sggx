@@ -1,5 +1,5 @@
 import taichi as ti
-from taichi.math import mat3, vec3, pi, sqrt, sin, cos, mat4, vec4, length, dot, exp
+from taichi.math import mat3, vec3, pi, sqrt, sin, cos, mat4, vec4, length, dot, exp, clamp
 
 vecD = ti.types.vector(64, dtype=ti.f32)
 
@@ -55,6 +55,9 @@ class SGGXVoxel:
     S_mat: mat3
     density: float
     albedo: vec3
+    normal: vec3
+    tangent: vec3
+    bitangent: vec3
     
     
 @ti.func
@@ -252,3 +255,20 @@ def laplacian_cdf(s: float, beta=0.01):
     else:
         result = 1 - 0.5 * exp(-s/beta)
     return result
+
+@ti.func
+def weight_func(x: float):
+    return clamp(1 - x**2, xmin=0, xmax=1)
+
+@ti.func
+def cov(x: vec3):
+    """
+    Calculate x^Tx
+    """
+    xTx = mat3(0.0)
+    xTx.fill(0.0)
+    xTx[0, 0] = x[0] * x[0]
+    xTx[0, 1] = x[0] * x[1]
+    xTx[0, 2] = x[0] * x[2]
+    xTx[1, 0] = xTx[0, 1]
+    xTx[]
