@@ -20,6 +20,10 @@ c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
                 [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
                 [0, 1, 0, 0],
                 [0, 0, 0, 1]], dtype=float)
+c2w = np.array([[-np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+                [np.sqrt(2)/2, 0, np.sqrt(2)/2, 2],
+                [0, 1, 0, 0],
+                [0, 0, 0, 1]], dtype=float)
 fov = 30
 width = 800 
 height = 800
@@ -53,10 +57,10 @@ volume = SGGX(lb=lb, rt=rt,
             lerp=lerp)
 
 # Integrator setting
-spp = 1
+spp = 256
 max_depth = 100
 ruassian_roulette_start = 10
-n_samples = 32
+n_samples = 16
 
 # integrator = AABBIntegrator(cam=camera, 
 #                             envmap=envmap, 
@@ -72,27 +76,34 @@ integrator = PathIntegrator(cam=camera,
                             envmap=envmap,
                             vol=volume,
                             max_depth=max_depth,
+                            spp=spp,
                             ruassian_roulette_start=ruassian_roulette_start,
                             n_samples=n_samples)
 
 window = ti.ui.Window("Renderer", (width, height))
 canvas = window.get_canvas()
 
-
-i = 1
 save_as = "test.png"
-img = ti.Vector.field(3, dtype=float, shape=[width, height])
+integrator.render()
+
 while window.running:
-    if i <= spp:
-        integrator.render_sample()
-        to_image(img, integrator.output, i)
-        canvas.set_image(img)
-    elif i == spp + 1:
-        print(f"Image rendered. Saved to {save_as}.")
-        ti.tools.imwrite(img, save_as)
-        canvas.set_image(img)
-    else:
-        canvas.set_image(img)
-    i += 1
+    canvas.set_image(integrator.output)
     window.show()
+# ti.tools.imwrite(integrator.output, save_as)
+
+# img = ti.Vector.field(3, dtype=float, shape=[width, height])
+i = 1
+# while window.running:
+#     if i <= spp:
+#         integrator.render_sample()
+#         to_image(img, integrator.output, i)
+#         canvas.set_image(img)
+#     elif i == spp + 1:
+#         print(f"Image rendered. Saved to {save_as}.")
+#         ti.tools.imwrite(img, save_as)
+#         canvas.set_image(img)
+#     else:
+#         canvas.set_image(img)
+#     i += 1
+#     window.show()
 

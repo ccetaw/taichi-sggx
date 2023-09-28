@@ -157,16 +157,23 @@ class PathIntegrator:
                  envmap: Envmap, 
                  vol: Volume, 
                  max_depth: int, 
+                 spp: int,
                  ruassian_roulette_start: int,
                  n_samples: int) -> None:
         self.cam = cam
         self.envmap = envmap
         self.vol = vol
+        self.spp = spp
         self.max_depth = max_depth
         self.ruassian_roullete_start = ruassian_roulette_start
         self.n_samples = n_samples
 
-        self.output = ti.Vector.field(3, dtype=float, shape=self.cam.size) # Default init to 0
+        self.output = vec3.field(shape=(self.cam.width, self.cam.height)) # Default init to 0
+
+    @ti.kernel
+    def test(self):
+        for i, j in self.output:
+            print([i, j])
 
     def render(self):
         for _ in tqdm(range(self.spp), desc="Rendering"):
@@ -186,8 +193,7 @@ class PathIntegrator:
                 # Run path tracing
                 L = vec3(0.0)
                 beta = vec3(1.0)
-                bounces = 0
-                while(True and bounces < self.max_depth):
+                for bounces in range(self.max_depth):
                     L += beta * self.vol.Tr(tmin, tmax, ray, self.n_samples) * self.envmap.eval(ray)
 
                     # Ruassian roulette termination
@@ -211,9 +217,8 @@ class PathIntegrator:
                             break
                     else:
                         break
-                    bounces += 1
 
-                self.output[i, j] += L
+                self.output[i, j] += L / self.spp
 
             else:
-                self.output[i, j] += self.envmap.eval(ray)
+                self.output[i, j] += self.envmap.eval(ray) / self.spp

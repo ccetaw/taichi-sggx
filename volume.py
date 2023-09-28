@@ -65,10 +65,10 @@ class Volume:
         t = 0.0
         beta = vec3(1.0)
         Tr = 1.0
-        for i in range(n_samples - 1):
-            sigma = self.density(near + interval*(i + 0.5)*ray.d) * self.sigma_t # Using the value at the middle point 
+        for k in range(n_samples - 1):
+            sigma = self.density(near + interval*(k + 0.5)*ray.d) * self.sigma_t # Using the value at the middle point 
             alpha = 1 - exp(-sigma * interval)
-            rayPDF[i] = alpha * Tr
+            rayPDF[k] = alpha * Tr
             Tr *= 1 - alpha
         
         rayPDF[n_samples - 1] = Tr # Probability of no volume scattering

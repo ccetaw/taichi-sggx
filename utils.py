@@ -1,7 +1,7 @@
 import taichi as ti
 from taichi.math import mat3, vec3, pi, sqrt, sin, cos, mat4, vec4, length, dot, exp
 
-vecD = ti.types.vector(32, dtype=ti.f32)
+vecD = ti.types.vector(64, dtype=ti.f32)
 
 @ti.dataclass
 class Ray:
@@ -168,13 +168,14 @@ def inverse_cdf(weights, nbins):
     Return a value between 0 and 1.
     """
     cdf = vecD(0.0)
+    cdf.fill(0.0)
     below = 0.0
     above = 0.0
     u = ti.random()
 
     for i in range(nbins):
         cdf[i+1] = cdf[i] + weights[i]
-        if u > cdf[i+1]:
+        if u > cdf[i] and u < cdf[i+1]:
             below = float(i)
             above = float(i+1)
             break

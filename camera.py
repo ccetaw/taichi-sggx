@@ -18,6 +18,8 @@ class PerspectiveCamera:
 
         # Taichi scope variables
         # Scalars here are in python scope thus can not be furthur assigned values
+        self.width = width
+        self.height = height
         self.fov = fov
         self.output_size = vec2(width, height)
         self.inv_output_size = 1 / self.output_size
@@ -28,14 +30,17 @@ class PerspectiveCamera:
                                0, 0, 1)
         
     @ti.func
-    def gen_ray(self, i: int, j: int) -> Ray:
+    def gen_ray(self, i, j) -> Ray:
         o = self.c2w @ vec4(0,0,0,1)
-        d = self.c2w @ vec4(i + 2*(ti.random() - 0.5) - self.output_size.x/2, j + 2*(ti.random() - 0.5) - self.output_size.y/2, -self.focal, 0)
+        d = self.c2w @ vec4(i + 2*(ti.random() - 0.5) - self.output_size.x/2.0, j + 2*(ti.random() - 0.5) - self.output_size.y/2.0, -self.focal, 0)
+
+        # print(i)
         
         origin = vec3(o[0], o[1], o[2])
         direction = normalize(vec3(d[0], d[1], d[2]))
 
         ray = Ray(o = origin, d = direction)
+        # print(ray.d)
 
         return ray # Ray in world space
         
